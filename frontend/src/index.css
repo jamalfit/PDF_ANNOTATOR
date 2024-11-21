@@ -1,0 +1,58 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.App {
+  padding: 20px;
+}
+
+.menu-bar {
+  margin-bottom: 20px;
+}
+
+.pdf-window {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 30px;
+}
+
+.pdf-viewer {
+  max-width: 100%;
+  height: auto;
+  position: relative;
+}
+
+.pdf-viewer iframe {
+  width: 100%;
+  height: 800px;
+  border: none;
+}
+
+.pdf-viewer canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  cursor: crosshair;
+  z-index: 10;
+}
+
+.popup {
+  position: fixed;
+  top: 20%;
+  left: 30%;
+  width: 40%;
+  background-color: white;
+  border: 2px solid #444;
+  padding: 20px;
+  z-index: 1000;
+}
+
+.popup h3 {
+  margin-top: 0;
+}
+
+.popup button {
+  margin-top: 20px;
+}

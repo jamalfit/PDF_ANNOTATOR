@@ -1,0 +1,147 @@
+.annotations-list {
+  position: fixed;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  z-index: 1000;
+}
+
+.annotations-list h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.annotations-container {
+  overflow-y: auto;
+  max-height: calc(80vh - 100px);
+}
+
+.annotation-item {
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: #f9f9f9;
+}
+
+.annotation-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.annotation-label {
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.annotation-page {
+  color: #666;
+}
+
+.annotation-text {
+  margin: 8px 0;
+  padding: 8px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.annotation-text:hover {
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+.annotation-coords {
+  font-size: 0.9em;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.annotation-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.jump-button, .delete-button {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.jump-button {
+  background: #3498db;
+  color: white;
+}
+
+.delete-button {
+  background: #e74c3c;
+  color: white;
+}
+
+.jump-button:hover {
+  background: #2980b9;
+}
+
+.delete-button:hover {
+  background: #c0392b;
+}
+
+.no-annotations {
+  text-align: center;
+  color: #666;
+  padding: 20px;
+  font-style: italic;
+}
+
+.annotations-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: move;
+  padding: 10px;
+  margin: -20px -20px 10px -20px;
+  background-color: #f0f0f0;
+  border-bottom: 1px solid #ddd;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  user-select: none;
+}
+
+.annotations-header h3 {
+  margin: 0;
+  padding: 0;
+}
+
+.close-button {
+  padding: 5px 10px;
+  cursor: pointer;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #666;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.close-button:hover {
+  background-color: #e0e0e0;
+} 
