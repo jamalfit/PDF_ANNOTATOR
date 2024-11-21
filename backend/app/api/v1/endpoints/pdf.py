@@ -2,7 +2,8 @@ from fastapi import APIRouter, UploadFile, HTTPException, Depends
 from sqlalchemy.orm import Session
 from app.core.s3 import S3Client
 from app.db.session import get_db
-from app.models.pdf import PDF
+from app.models import PDF
+from app.core.config import settings
 
 router = APIRouter()
 s3_client = S3Client()
@@ -12,12 +13,19 @@ async def upload_pdf(
     file: UploadFile,
     db: Session = Depends(get_db)
 ) -> dict:
-    if not file.filename.lower().endswith('.pdf'):
-        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
+    # Add file size check
+    file_size = 0
+    file_content = await file.read()
+    if len(file_content) > settings.MAX_FILE_SIZE:  # Add to Settings
+        raise HTTPException(status_code=413, detail="File too large")
     
     try:
-        # Upload to S3
-        s3_key = await s3_client.upload_pdf(file)
+        # Upload to S3 with content type verification
+        content_type = file.content_type
+        if content_type != 'application/pdf':
+            raise HTTPException(status_code=400, detail="Invalid file type")
+            
+        s3_key = await s3_client.upload_pdf(file_content)
         
         # Store metadata in database
         pdf = PDF(

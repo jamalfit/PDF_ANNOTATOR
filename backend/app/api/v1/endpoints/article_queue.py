@@ -1,10 +1,10 @@
-from fastapi import APIRouter, HTTPException, Depends, Response
+from fastapi import APIRouter, HTTPException, Depends, Response, Query
 from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 import io
 from app.db.session import get_db
 from app.models.article_queue import ArticleQueue
-from app.core.s3 import get_s3_object, generate_presigned_url
+from app.core.s3 import S3Client
 import logging
 from typing import List, Optional
 from sqlalchemy import desc
@@ -12,13 +12,14 @@ from sqlalchemy import desc
 # Create the router
 router = APIRouter()
 logger = logging.getLogger(__name__)
+s3_client = S3Client()
 
 # Get all articles
 @router.get("/", response_model=List[dict])
 async def get_queue_items(
-    skip: int = 0,
-    limit: int = 10,
-    status: Optional[str] = None,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=10, ge=1, le=100),
+    status: Optional[str] = Query(None, regex="^[a-zA-Z0-9_-]+$"),
     db: Session = Depends(get_db)
 ):
     """Get articles from the queue with optional status filter"""
@@ -82,15 +83,15 @@ async def download_pdf(
         
         if direct_download:
             try:
-                # Get the file from S3
-                response = get_s3_object(article.pdf_s3_key)
+                # Get the file from S3 using S3Client
+                pdf_content = await s3_client.download_pdf(article.pdf_s3_key)
                 
                 # Create a filename for download
                 filename = f"{article.doi.replace('/', '_')}.pdf" if article.doi else f"article_{article_id}.pdf"
                 
                 # Stream the file content
                 return StreamingResponse(
-                    io.BytesIO(response['Body'].read()),
+                    io.BytesIO(pdf_content),
                     media_type='application/pdf',
                     headers={
                         'Content-Disposition': f'attachment; filename="{filename}"'
@@ -105,8 +106,8 @@ async def download_pdf(
                 )
         else:
             try:
-                # Generate pre-signed URL
-                url = generate_presigned_url(article.pdf_s3_key)
+                # Generate pre-signed URL using S3Client
+                url = s3_client.generate_presigned_url(article.pdf_s3_key)
                 return RedirectResponse(url=url)
                 
             except Exception as e:

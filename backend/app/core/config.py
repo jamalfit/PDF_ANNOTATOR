@@ -23,6 +23,22 @@ class Settings(BaseSettings):
     # OpenAI Settings
     OPENAI_API_KEY: str
     
+    # Security settings
+    ALLOWED_ORIGINS: list = ["http://localhost:3000"]
+    MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
+    API_KEY_NAME: str = "X-API-Key"
+    RATE_LIMIT_PER_MINUTE: int = 60
+    
+    # Improve AWS settings
+    AWS_ENDPOINT_URL: Optional[str] = None
+    AWS_S3_CUSTOM_DOMAIN: Optional[str] = None
+    
+    # Add PDF processing settings
+    PDF_ALLOWED_MIME_TYPES: list = ["application/pdf"]
+    MAX_CHUNK_SIZE: int = 1000
+    
+    ENVIRONMENT: str = "development"
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

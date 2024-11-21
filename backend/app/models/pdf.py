@@ -1,15 +1,14 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text
-from sqlalchemy.ext.declarative import declarative_base
-import datetime
-
-Base = declarative_base()
+from datetime import datetime
+from app.models.base import Base
 
 class PDF(Base):
     __tablename__ = "pdfs"
 
     id = Column(Integer, primary_key=True, index=True)
-    filename = Column(String, index=True)
-    s3_key = Column(String, unique=True, index=True)
-    status = Column(String, index=True, default="uploaded")  # uploaded, processing, completed, failed
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow) 
+    filename = Column(String(255), nullable=False)
+    s3_key = Column(String(255), unique=True, nullable=False)
+    status = Column(String(50), default="uploaded")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    error_message = Column(Text, nullable=True)

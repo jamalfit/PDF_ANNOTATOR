@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Security
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from typing import List, Optional
@@ -6,6 +6,7 @@ from app.db.session import get_db
 from app.models.document import Document
 from app.models.section import Section
 from app.models.text_chunk import TextChunk
+from app.core.security import get_api_key
 
 router = APIRouter()
 
@@ -14,13 +15,17 @@ async def get_documents(
     skip: int = 0,
     limit: int = 10,
     status_id: Optional[int] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    api_key: str = Security(get_api_key)
 ):
     """Get a list of documents with pagination"""
     query = db.query(Document)
     
     if status_id:
         query = query.filter(Document.status_id == status_id)
+    
+    if limit > 100:
+        limit = 100
     
     documents = query.order_by(desc(Document.created_at)).offset(skip).limit(limit).all()
     
