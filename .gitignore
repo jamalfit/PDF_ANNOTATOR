@@ -68,3 +68,5 @@ temp/
 .DS_Store
 Thumbs.db backend/.env
 .env
+backend/.env
+.env
