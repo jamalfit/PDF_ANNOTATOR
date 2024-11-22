@@ -181,25 +181,19 @@ const ArticleList = () => {
   const [showAnnotator, setShowAnnotator] = useState(false);
 
   useEffect(() => {
-    console.log('Component mounted, fetching articles...');
+    const fetchArticles = async () => {
+      try {
+        const response = await axios.get('http://localhost:8000/api/v1/article-queue');
+        setArticles(response.data);
+        setLoading(false);
+      } catch (err) {
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
     fetchArticles();
   }, []);
-
-  const fetchArticles = async () => {
-    try {
-      console.log('Making API request...');
-      const response = await axios.get('http://localhost:8000/api/v1/article-queue/');
-      console.log('API Response:', response.data);
-      setArticles(response.data);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error details:', err.response || err);
-      setError(`Failed to fetch articles: ${err.message}`);
-      setLoading(false);
-    }
-  };
-
-  console.log('Current state:', { loading, error, articlesCount: articles.length });
 
   const handleView = (articleId) => {
     const article = articles.find(a => a.id === articleId);

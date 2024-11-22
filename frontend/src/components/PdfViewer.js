@@ -53,7 +53,6 @@ const PdfViewer = ({ articleId, initialAnnotationData }) => {
   const onPageLoadSuccess = (page) => {
     const { width, height } = page.getViewport({ scale: 1 });
     setPageDimensions({ width, height });
-    console.log('Page loaded with dimensions:', { width, height });
   };
 
   const handleZoomIn = () => {
@@ -76,12 +75,11 @@ const PdfViewer = ({ articleId, initialAnnotationData }) => {
 
   const handleAnnotationsChange = (newRectangles) => {
     setRectangles(newRectangles);
+    // Optionally auto-save when rectangles change
+    // handleSaveAnnotations();
   };
 
   const processLoadedAnnotations = (annotationData) => {
-    console.log('Processing annotation data:', annotationData);
-    
-    // Handle both possible data structures
     let annotations = [];
     
     if (typeof annotationData === 'string') {
@@ -98,15 +96,11 @@ const PdfViewer = ({ articleId, initialAnnotationData }) => {
       annotations = annotationData.annotation_data.annotations;
     }
 
-    console.log('Found annotations:', annotations);
-
     if (!annotations || annotations.length === 0) {
-      console.log('No valid annotations found');
       return [];
     }
 
     const processedRectangles = annotations.map(annotation => {
-      // Extract coordinates from the annotation
       const coords = annotation.coordinates || {};
       
       return {
@@ -122,32 +116,25 @@ const PdfViewer = ({ articleId, initialAnnotationData }) => {
       };
     });
 
-    console.log('Processed rectangles:', processedRectangles);
     return processedRectangles;
   };
 
-  // Update the useEffect to properly handle the loaded data
   useEffect(() => {
     const loadArticleData = async () => {
       try {
-        console.log('Loading article data for ID:', articleId);
         const articleResponse = await axios.get(
           `http://localhost:8000/api/v1/article-queue/${articleId}`
         );
         
-        // First try to use initialAnnotationData, then fall back to API response
         const annotationData = initialAnnotationData || articleResponse.data.annotation_data;
         
         if (annotationData) {
-          console.log('Found annotation data:', annotationData);
           const processedRectangles = processLoadedAnnotations(annotationData);
           if (processedRectangles.length > 0) {
-            console.log('Setting processed rectangles:', processedRectangles);
             setRectangles(processedRectangles);
           }
         }
 
-        // Load PDF
         const pdfUrl = `http://localhost:8000/api/v1/s3/get-pdf-by-key/${encodeURIComponent(articleResponse.data.pdf_s3_key)}`;
         setPdfUrl(pdfUrl);
       } catch (error) {
@@ -163,38 +150,19 @@ const PdfViewer = ({ articleId, initialAnnotationData }) => {
       const textContent = await pdfPage.getTextContent();
       const viewport = pdfPage.getViewport({ scale: 1.0 });
       
-      // Convert screen coordinates to PDF coordinates
       const pdfRect = {
         left: rect.x,
         right: rect.x + rect.width,
-        // Convert y-coordinates to PDF space (origin at bottom-left)
         bottom: viewport.height - rect.y,
         top: viewport.height - (rect.y + rect.height)
       };
 
-      console.log('PDF Space Rectangle:', {
-        rect: rect,
-        pdfRect: pdfRect,
-        viewportHeight: viewport.height
-      });
-
-      // Filter and collect text items
       const textItems = [];
       
       for (const item of textContent.items) {
-        // Get text item position in PDF space
         const itemX = item.transform[4];
         const itemY = item.transform[5];
 
-        // Log coordinates for debugging
-        console.log('Text Item:', {
-          text: item.str,
-          x: itemX,
-          y: itemY,
-          bounds: pdfRect
-        });
-
-        // Check if text item is within rectangle bounds in PDF space
         if (
           itemX >= pdfRect.left &&
           itemX <= pdfRect.right &&
@@ -202,25 +170,38 @@ const PdfViewer = ({ articleId, initialAnnotationData }) => {
           itemY <= pdfRect.bottom
         ) {
           textItems.push(item);
-          console.log('Found text:', item.str);
         }
       }
 
-      // Sort text items top to bottom, left to right
       textItems.sort((a, b) => {
         if (Math.abs(b.transform[5] - a.transform[5]) > 5) {
-          return b.transform[5] - a.transform[5]; // Sort by y-coordinate
+          return b.transform[5] - a.transform[5];
         }
-        return a.transform[4] - b.transform[4]; // Sort by x-coordinate if on same line
+        return a.transform[4] - b.transform[4];
       });
 
-      const extractedText = textItems.map(item => item.str).join(' ');
-      console.log('Extracted text:', extractedText);
-      
-      return extractedText;
+      return textItems.map(item => item.str).join(' ');
     } catch (error) {
       console.error('Error extracting text:', error);
       return '';
+    }
+  };
+
+  const fetchLatestAnnotations = async () => {
+    try {
+      const response = await axios.get(
+        `http://localhost:8000/api/v1/article-queue/${articleId}`
+      );
+      
+      if (response.data.annotation_data) {
+        const processedRectangles = processLoadedAnnotations(response.data.annotation_data);
+        if (processedRectangles.length > 0) {
+          setRectangles(processedRectangles);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching latest annotations:', error);
+      alert('Error refreshing annotations');
     }
   };
 
@@ -228,19 +209,13 @@ const PdfViewer = ({ articleId, initialAnnotationData }) => {
     try {
       const pdfPages = {};
       
-      console.log('Starting annotation save process...');
-      
       const annotationsWithText = await Promise.all(
         rectangles.map(async (rect) => {
-          // Load PDF page if not already loaded
           if (!pdfPages[rect.page]) {
             pdfPages[rect.page] = await pdfDoc.getPage(rect.page);
           }
           const pdfPage = pdfPages[rect.page];
-          
-          // Extract text
           const text = await extractTextFromPdf(rect, pdfPage);
-          console.log('Extracted text for rectangle:', text);
 
           return {
             coordinates: {
@@ -260,15 +235,14 @@ const PdfViewer = ({ articleId, initialAnnotationData }) => {
         annotations: annotationsWithText
       };
 
-      console.log('Final annotation data:', annotationData);
-
       const response = await axios.put(
         `http://localhost:8000/api/v1/article-queue/${articleId}/annotations`,
         { annotation_data: annotationData }
       );
 
       if (response.status === 200) {
-        alert('Annotations saved successfully!');
+        alert('Annotations saved successfully! If changes are not visible, please use the refresh button.');
+        await fetchLatestAnnotations();
       }
     } catch (error) {
       console.error('Error saving annotations:', error);
@@ -276,60 +250,37 @@ const PdfViewer = ({ articleId, initialAnnotationData }) => {
     }
   };
 
-  const JsonViewer = ({ data, onClose }) => (
-    <div className="modal-overlay" style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      zIndex: 1000,
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center'
-    }}>
-      <div className="modal-content" style={{
-        backgroundColor: 'white',
-        padding: '20px',
-        borderRadius: '8px',
-        maxWidth: '80%',
-        maxHeight: '80%',
-        overflow: 'auto'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <h3>Annotation Data</h3>
-          <button onClick={onClose}>Close</button>
+  const JsonViewer = ({ data, onClose }) => {
+    return (
+      <div className="modal-overlay">
+        <div className="modal-content json-viewer">
+          <div className="json-header">
+            <h3>Annotation Data</h3>
+            <button className="btn-close" onClick={onClose}>Close</button>
+          </div>
+          <div className="json-content">
+            <pre style={{
+              textAlign: 'left',
+              margin: '0',
+              padding: '15px',
+              whiteSpace: 'pre-wrap',
+              wordWrap: 'break-word',
+              fontFamily: 'Consolas, Monaco, "Andale Mono", monospace',
+              fontSize: '14px',
+              lineHeight: '1.5',
+              color: '#000000',
+              backgroundColor: '#ffffff',
+              border: '1px solid #e0e0e0',
+              borderRadius: '4px',
+              boxShadow: 'inset 0 1px 1px rgba(0, 0, 0, 0.05)'
+            }}>
+              {JSON.stringify(data, null, 2)}
+            </pre>
+          </div>
         </div>
-        <pre style={{ 
-          backgroundColor: '#f5f5f5', 
-          padding: '10px', 
-          borderRadius: '4px',
-          overflow: 'auto'
-        }}>
-          {JSON.stringify({
-            annotations: rectangles.map(rect => ({
-              coordinates: {
-                left: rect.x,
-                top: rect.y,
-                right: rect.x + rect.width,
-                bottom: rect.y + rect.height
-              },
-              rect: {
-                x: rect.x,
-                y: rect.y,
-                width: rect.width,
-                height: rect.height
-              },
-              page_num: rect.page,
-              section_type: rect.label,
-              text: rect.text || ''
-            }))
-          }, null, 2)}
-        </pre>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div style={{ margin: '20px' }} ref={containerRef}>
@@ -368,6 +319,12 @@ const PdfViewer = ({ articleId, initialAnnotationData }) => {
           Save Annotations
         </button>
         <button 
+          onClick={fetchLatestAnnotations}
+          className="refresh-button"
+        >
+          <span>↻</span> Refresh Annotations
+        </button>
+        <button 
           onClick={() => setShowJsonViewer(true)}
           style={{
             marginLeft: '10px',
@@ -380,6 +337,9 @@ const PdfViewer = ({ articleId, initialAnnotationData }) => {
         >
           Show Annotations JSON
         </button>
+        <div className="warning-message">
+          Note: If changes are not visible after saving, please use the refresh button.
+        </div>
       </div>
 
       {showJsonViewer && (
@@ -416,11 +376,24 @@ const PdfViewer = ({ articleId, initialAnnotationData }) => {
           pageDimensions={pageDimensions}
           labels={labels}
           selectedLabel={selectedLabel}
-          onLabelChange={handleLabelChange}
-          highlightedRect={highlightedRect}
           rectangles={rectangles}
           onAnnotationsChange={handleAnnotationsChange}
-          getLabelColor={getLabelColor}
+          getLabelColor={(label) => {
+            const colorMap = {
+              'Title': '#FF6B6B',       // Coral Red
+              'Authors': '#4ECDC4',     // Turquoise
+              'Abstract': '#45B7D1',    // Sky Blue
+              'DOI': '#96CEB4',         // Sage Green
+              'Introduction': '#FFD93D', // Yellow
+              'Materials and Methods': '#FF8CC8', // Pink
+              'Review Heading': '#6C5B7B', // Purple
+              'Illustration': '#F8B195', // Peach
+              'Table': '#C06C84',       // Rose
+              'References': '#355C7D',  // Navy Blue
+              'Keywords': '#2ECC71'     // Emerald Green
+            };
+            return colorMap[label] || '#CCCCCC';
+          }}
         />
       </div>
     </div>

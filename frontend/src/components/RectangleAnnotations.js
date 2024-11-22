@@ -81,6 +81,12 @@ const RectangleAnnotations = ({
             ...rect,
             x: newX,
             y: newY,
+            width: rect.width,
+            height: rect.height,
+            page: rect.page,
+            label: rect.label,
+            color: rect.color,
+            text: rect.text
           };
         }
         return rect;
@@ -108,6 +114,9 @@ const RectangleAnnotations = ({
       setIsDragging(false);
       setSelectedRectIndex(null);
       setDragOffset(null);
+      
+      // Important: Force a save after moving a rectangle
+      onAnnotationsChange([...rectangles]);
     }
   };
 
