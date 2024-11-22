@@ -9,17 +9,31 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # For development
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Development CORS settings
+if settings.DEBUG:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Allows all origins in development
+        allow_credentials=True,
+        allow_methods=["*"],  # Allows all methods
+        allow_headers=["*"],  # Allows all headers
+    )
+else:
+    # Production CORS settings (more restrictive)
+    origins = [
+        "http://localhost:3000",
+        "http://your-production-domain.com"
+    ]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+        allow_headers=["*"],
+    )
 
 # Include API router
-app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():
