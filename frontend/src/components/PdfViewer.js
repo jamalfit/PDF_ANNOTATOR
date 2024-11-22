@@ -349,52 +349,30 @@ const PdfViewer = ({ articleId, initialAnnotationData }) => {
         />
       )}
 
-      <div 
-        className="pdf-container"
-        style={{
-          position: 'relative',
-          border: '1px solid #ccc',
-          margin: '0 auto'
-        }}
-      >
-        {pdfUrl && (
+      <div className="pdf-viewer-container">
+        <div className="pdf-page-container" style={{ position: 'relative' }}>
+          {/* PDF Page */}
           <Document file={pdfUrl} onLoadSuccess={onDocumentLoadSuccess}>
             <Page
               key={`page_${currentPage}`}
               pageNumber={currentPage}
               scale={scale}
               onLoadSuccess={onPageLoadSuccess}
-              renderTextLayer={true}
-              renderAnnotationLayer={false}
             />
           </Document>
-        )}
 
-        <RectangleAnnotations
-          scale={scale}
-          currentPage={currentPage}
-          pageDimensions={pageDimensions}
-          labels={labels}
-          selectedLabel={selectedLabel}
-          rectangles={rectangles}
-          onAnnotationsChange={handleAnnotationsChange}
-          getLabelColor={(label) => {
-            const colorMap = {
-              'Title': '#FF6B6B',       // Coral Red
-              'Authors': '#4ECDC4',     // Turquoise
-              'Abstract': '#45B7D1',    // Sky Blue
-              'DOI': '#96CEB4',         // Sage Green
-              'Introduction': '#FFD93D', // Yellow
-              'Materials and Methods': '#FF8CC8', // Pink
-              'Review Heading': '#6C5B7B', // Purple
-              'Illustration': '#F8B195', // Peach
-              'Table': '#C06C84',       // Rose
-              'References': '#355C7D',  // Navy Blue
-              'Keywords': '#2ECC71'     // Emerald Green
-            };
-            return colorMap[label] || '#CCCCCC';
-          }}
-        />
+          {/* Annotations layer directly on top of PDF */}
+          <RectangleAnnotations
+            scale={scale}
+            currentPage={currentPage}
+            pageDimensions={pageDimensions}
+            labels={labels}
+            selectedLabel={selectedLabel}
+            rectangles={rectangles}
+            onAnnotationsChange={handleAnnotationsChange}
+            getLabelColor={getLabelColor}
+          />
+        </div>
       </div>
     </div>
   );

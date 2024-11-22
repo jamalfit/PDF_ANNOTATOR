@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import './ContextMenuPdfViewer.css';
 
 const RectangleAnnotations = ({
@@ -18,46 +18,21 @@ const RectangleAnnotations = ({
   const [currentRect, setCurrentRect] = useState(null);
   const [selectedRectIndex, setSelectedRectIndex] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState(null);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [contextMenu, setContextMenu] = useState(null);
   const svgRef = useRef(null);
 
   // Context Menu Component
-  const ContextMenu = ({ x, y, rectIndex, onClose, rectangles, labels, onAnnotationsChange }) => {
+  const ContextMenu = ({ x, y, rectIndex, onClose, rectangles, labels, onAnnotationsChange, getLabelColor }) => {
     const rect = rectangles[rectIndex];
     const [showJson, setShowJson] = useState(false);
-    const [menuPosition, setMenuPosition] = useState({ x, y: Math.min(y, window.innerHeight / 3) });
-    const [jsonPosition, setJsonPosition] = useState({ x: window.innerWidth / 4, y: window.innerHeight / 4 });
+    // Initialize menu position in center of view
+    const [menuPosition, setMenuPosition] = useState({ 
+      x: Math.min(window.innerWidth / 2 - 100, x), // Center, but respect click position
+      y: Math.min(window.innerHeight / 2 - 100, y)
+    });
     
-    // Add click outside handler
-    React.useEffect(() => {
-      const handleClickOutside = (e) => {
-        if (!e.target.closest('.context-menu') && !e.target.closest('.text-modal-content')) {
-          onClose();
-        }
-      };
-      
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [onClose]);
-
-    const handleDelete = () => {
-      const newRectangles = rectangles.filter((_, index) => index !== rectIndex);
-      onAnnotationsChange(newRectangles);
-      onClose();
-    };
-
-    const handleLabelChange = (newLabel) => {
-      const updatedRectangles = rectangles.map((r, index) => 
-        index === rectIndex ? { 
-          ...r, 
-          label: newLabel,
-          color: getLabelColor(newLabel)
-        } : r
-      );
-      onAnnotationsChange(updatedRectangles);
-    };
-
+    // Add drag functionality for menu
     const handleMenuMouseDown = (e) => {
       const startX = e.clientX - menuPosition.x;
       const startY = e.clientY - menuPosition.y;
@@ -78,24 +53,22 @@ const RectangleAnnotations = ({
       document.addEventListener('mouseup', handleMouseUp);
     };
 
-    const handleJsonMouseDown = (e) => {
-      const startX = e.clientX - jsonPosition.x;
-      const startY = e.clientY - jsonPosition.y;
-      
-      const handleMouseMove = (e) => {
-        setJsonPosition({
-          x: e.clientX - startX,
-          y: e.clientY - startY
-        });
-      };
-      
-      const handleMouseUp = () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-      
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+    const handleDelete = () => {
+      const newRectangles = rectangles.filter((_, index) => index !== rectIndex);
+      onAnnotationsChange(newRectangles);
+      onClose();
+    };
+
+    const handleLabelChange = (e) => {
+      const newLabel = e.target.value;
+      const updatedRectangles = rectangles.map((r, index) => 
+        index === rectIndex ? { 
+          ...r, 
+          label: newLabel,
+          color: getLabelColor(newLabel)
+        } : r
+      );
+      onAnnotationsChange(updatedRectangles);
     };
 
     return (
@@ -106,42 +79,61 @@ const RectangleAnnotations = ({
             position: 'fixed',
             top: menuPosition.y,
             left: menuPosition.x,
-            cursor: 'move'
+            zIndex: 1000,
+            background: 'white',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+            minWidth: '150px',
+            padding: '8px 0'
           }}
-          onClick={(e) => e.stopPropagation()}
         >
+          {/* Draggable header */}
           <div 
             className="menu-header"
             onMouseDown={handleMenuMouseDown}
             style={{
-              padding: '5px',
+              padding: '8px 12px',
               background: '#f0f0f0',
               borderBottom: '1px solid #ccc',
-              cursor: 'move'
+              cursor: 'move',
+              userSelect: 'none',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
             }}
           >
-            ⋮⋮ Menu
+            <span>⋮⋮ Menu</span>
             <button 
               onClick={onClose}
               style={{
-                float: 'right',
                 border: 'none',
                 background: 'none',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                fontSize: '16px'
               }}
             >
               ✕
             </button>
           </div>
-          <div className="menu-item" onClick={() => setShowJson(true)}>
+
+          {/* Menu items */}
+          <div 
+            className="menu-item" 
+            onClick={() => setShowJson(true)}
+            style={{ cursor: 'pointer', padding: '8px 12px' }}
+          >
             View Text
           </div>
-          <div className="menu-item">
-            Change Label
+          <div className="menu-item" style={{ padding: '8px 12px' }}>
             <select 
               value={rect.label}
-              onChange={(e) => handleLabelChange(e.target.value)}
+              onChange={handleLabelChange}
               onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%',
+                padding: '4px'
+              }}
             >
               {labels.map(label => (
                 <option key={label} value={label}>{label}</option>
@@ -149,47 +141,72 @@ const RectangleAnnotations = ({
             </select>
           </div>
           <div 
-            className="menu-item delete" 
+            className="menu-item delete"
             onClick={handleDelete}
-            style={{ cursor: 'pointer' }}
+            style={{
+              color: '#dc3545',
+              cursor: 'pointer',
+              padding: '8px 12px'
+            }}
           >
             Delete Rectangle
           </div>
         </div>
 
+        {/* Text content modal */}
         {showJson && (
-          <div className="text-modal-overlay" onClick={() => setShowJson(false)}>
+          <div 
+            className="text-modal-overlay"
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0,0,0,0.5)',
+              zIndex: 1001
+            }}
+            onClick={() => setShowJson(false)}
+          >
             <div 
               className="text-modal-content"
               onClick={(e) => e.stopPropagation()}
               style={{
                 position: 'fixed',
-                top: jsonPosition.y,
-                left: jsonPosition.x,
-                transform: 'none'
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                background: 'white',
+                padding: '20px',
+                borderRadius: '4px',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                minWidth: '300px',
+                maxWidth: '500px',
+                maxHeight: '80vh',
+                overflow: 'auto'
               }}
             >
-              <div 
-                className="text-modal-header"
-                onMouseDown={handleJsonMouseDown}
-                style={{ cursor: 'move' }}
-              >
-                <h3>Rectangle Text Content</h3>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '16px'
+              }}>
+                <h3 style={{ margin: 0 }}>Rectangle Text Content</h3>
                 <button 
-                  className="close-button" 
                   onClick={() => setShowJson(false)}
                   style={{
-                    float: 'right',
                     border: 'none',
                     background: 'none',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    fontSize: '20px'
                   }}
                 >
                   ✕
                 </button>
               </div>
-              <div className="text-modal-body">
-                {rect.text || 'No text content'}
+              <div style={{ wordBreak: 'break-word' }}>
+                {rect.text || 'No text content available'}
               </div>
             </div>
           </div>
@@ -198,16 +215,28 @@ const RectangleAnnotations = ({
     );
   };
 
-  // Replace the Ctrl+click handler with double-click
-  const handleRectClick = (e, index) => {
-    if (e.detail === 2) { // Check for double-click
+  // Update mouse handlers for better drag control
+  const handleRectMouseDown = (e, index) => {
+    if (e.ctrlKey || e.metaKey) { // Handle context menu
       e.preventDefault();
       e.stopPropagation();
       
+      const menuX = Math.min(e.clientX, window.innerWidth - 200);
+      const menuY = Math.min(e.clientY, window.innerHeight - 300);
+      
       setContextMenu({
-        x: e.clientX,
-        y: e.clientY,
+        x: menuX,
+        y: menuY,
         rectIndex: index
+      });
+    } else { // Handle dragging
+      e.stopPropagation();
+      const svgRect = svgRef.current.getBoundingClientRect();
+      setSelectedRectIndex(index);
+      setIsDragging(true);
+      setDragStart({
+        x: (e.clientX - svgRect.left) / scale - rectangles[index].x,
+        y: (e.clientY - svgRect.top) / scale - rectangles[index].y
       });
     }
   };
@@ -224,172 +253,104 @@ const RectangleAnnotations = ({
 
   // Start drawing a new rectangle
   const handleMouseDown = (e) => {
-    if (e.target !== svgRef.current) return; // Prevent drawing if clicking on existing rectangle
-    e.preventDefault();
-
-    const { x, y } = getMousePosition(e);
-
-    setIsDrawing(true);
-    setStartPoint({ x, y });
-
-    setCurrentRect({
-      x,
-      y,
-      width: 0,
-      height: 0,
-      page: currentPage,
-      label: selectedLabel,
-      color: getLabelColor(selectedLabel),
-    });
+    if (e.button === 0 && !contextMenu) { // Left click and no context menu open
+      const svgRect = svgRef.current.getBoundingClientRect();
+      const x = (e.clientX - svgRect.left) / scale;
+      const y = (e.clientY - svgRect.top) / scale;
+      
+      setIsDrawing(true);
+      setCurrentRect({
+        x,
+        y,
+        width: 0,
+        height: 0,
+        page: currentPage,
+        label: selectedLabel,
+        color: getLabelColor(selectedLabel)
+      });
+    }
   };
 
   // Continue drawing or dragging
   const handleMouseMove = (e) => {
-    if (isDrawing) {
-      e.preventDefault();
+    const svgRect = svgRef.current.getBoundingClientRect();
+    const currentX = (e.clientX - svgRect.left) / scale;
+    const currentY = (e.clientY - svgRect.top) / scale;
 
-      const { x, y } = getMousePosition(e);
-
-      const newRect = {
-        ...currentRect,
-        x: Math.min(x, startPoint.x),
-        y: Math.min(y, startPoint.y),
-        width: Math.abs(x - startPoint.x),
-        height: Math.abs(y - startPoint.y),
-      };
-
-      setCurrentRect(newRect);
+    if (isDrawing && currentRect) {
+      setCurrentRect(prev => ({
+        ...prev,
+        width: currentX - prev.x,
+        height: currentY - prev.y
+      }));
     } else if (isDragging && selectedRectIndex !== null) {
-      e.preventDefault();
-
-      const { x: mouseX, y: mouseY } = getMousePosition(e);
-      const { offsetX, offsetY } = dragOffset;
-
-      const newX = mouseX - offsetX;
-      const newY = mouseY - offsetY;
-
+      const newX = currentX - dragStart.x;
+      const newY = currentY - dragStart.y;
+      
       const updatedRectangles = rectangles.map((rect, index) => {
         if (index === selectedRectIndex) {
           return {
             ...rect,
             x: newX,
-            y: newY,
-            width: rect.width,
-            height: rect.height,
-            page: rect.page,
-            label: rect.label,
-            color: rect.color,
-            text: rect.text
+            y: newY
           };
         }
         return rect;
       });
-
       onAnnotationsChange(updatedRectangles);
-    } else if (isResizing && selectedRectIndex !== null) {
-      e.preventDefault();
-      
-      const { x: mouseX, y: mouseY } = getMousePosition(e);
-      const rect = rectangles[selectedRectIndex];
-      let newRect = { ...rect };
-
-      switch (resizeHandle) {
-        case 'nw':
-          newRect.width = (rect.x + rect.width - mouseX);
-          newRect.height = (rect.y + rect.height - mouseY);
-          newRect.x = mouseX;
-          newRect.y = mouseY;
-          break;
-        case 'ne':
-          newRect.width = (mouseX - rect.x);
-          newRect.height = (rect.y + rect.height - mouseY);
-          newRect.y = mouseY;
-          break;
-        case 'sw':
-          newRect.width = (rect.x + rect.width - mouseX);
-          newRect.height = (mouseY - rect.y);
-          newRect.x = mouseX;
-          break;
-        case 'se':
-          newRect.width = (mouseX - rect.x);
-          newRect.height = (mouseY - rect.y);
-          break;
-        default:
-          break;
-      }
-
-      // Ensure minimum size
-      if (newRect.width > 5 && newRect.height > 5) {
-        const updatedRectangles = rectangles.map((r, index) =>
-          index === selectedRectIndex ? newRect : r
-        );
-        onAnnotationsChange(updatedRectangles);
-      }
     }
   };
 
   // Finish drawing or dragging
-  const handleMouseUp = (e) => {
+  const handleMouseUp = () => {
     if (isDrawing && currentRect) {
-      e.preventDefault();
-
-      setIsDrawing(false);
-
-      // Only save rectangles with a minimum size
-      if (currentRect.width > 5 && currentRect.height > 5) {
-        onAnnotationsChange([...rectangles, currentRect]);
+      const normalizedRect = {
+        ...currentRect,
+        x: currentRect.width < 0 ? currentRect.x + currentRect.width : currentRect.x,
+        y: currentRect.height < 0 ? currentRect.y + currentRect.height : currentRect.y,
+        width: Math.abs(currentRect.width),
+        height: Math.abs(currentRect.height)
+      };
+      
+      if (normalizedRect.width > 0 && normalizedRect.height > 0) {
+        onAnnotationsChange([...rectangles, normalizedRect]);
       }
-      setCurrentRect(null);
-    } else if (isDragging) {
-      e.preventDefault();
+    }
+    
+    setIsDrawing(false);
+    setIsDragging(false);
+    setCurrentRect(null);
+    setSelectedRectIndex(null);
+  };
 
+  // Add window-level mouse up handler
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
       setIsDragging(false);
       setSelectedRectIndex(null);
-      setDragOffset(null);
-      
-      // Important: Force a save after moving a rectangle
-      onAnnotationsChange([...rectangles]);
-    } else if (isResizing) {
-      e.preventDefault();
-      setIsResizing(false);
-      setResizeHandle(null);
-      setSelectedRectIndex(null);
-      onAnnotationsChange([...rectangles]);
-    }
-  };
+    };
 
-  // Start dragging an existing rectangle
-  const handleRectMouseDown = (e, index) => {
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, []);
+
+  const handleResizeStart = (e, index, corner) => {
     e.stopPropagation();
-    e.preventDefault();
-
-    const { x: mouseX, y: mouseY } = getMousePosition(e);
-    const rect = rectangles[index];
-
-    // Store the offset between the mouse position and the rectangle's position
-    const offsetX = mouseX - rect.x;
-    const offsetY = mouseY - rect.y;
-
-    setDragOffset({
-      offsetX,
-      offsetY,
-    });
-
-    setIsDragging(true);
     setSelectedRectIndex(index);
+    setIsResizing({ active: true, corner });
   };
 
-  const handleResizeStart = (e, index, handle) => {
-    e.stopPropagation();
-    e.preventDefault();
-    
-    setIsResizing(true);
-    setSelectedRectIndex(index);
-    setResizeHandle(handle);
-    
-    const { x, y } = getMousePosition(e);
-    setStartPoint({ x, y });
-  };
+  // Add click outside handler for context menu
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (contextMenu && !e.target.closest('.context-menu')) {
+        setContextMenu(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [contextMenu]);
 
   return (
     <svg
@@ -401,13 +362,14 @@ const RectangleAnnotations = ({
         left: 0,
         width: pageDimensions.width * scale,
         height: pageDimensions.height * scale,
+        pointerEvents: 'all'
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
     >
       {rectangles
-        .filter((rect) => rect.page === currentPage)
+        .filter(rect => rect.page === currentPage)
         .map((rect, index) => (
           <g key={index}>
             <rect
@@ -415,91 +377,82 @@ const RectangleAnnotations = ({
               y={rect.y * scale}
               width={rect.width * scale}
               height={rect.height * scale}
-              fill={rect.color || getLabelColor(rect.label)}
-              fillOpacity="0.1"
-              stroke={rect.color || getLabelColor(rect.label)}
-              strokeWidth={selectedRectIndex === index ? '3' : '2'}
-              cursor="move"
+              fill={`${rect.color}33`}
+              stroke={rect.color}
+              strokeWidth="2"
               onMouseDown={(e) => handleRectMouseDown(e, index)}
-              onClick={(e) => handleRectClick(e, index)}
+              style={{ cursor: 'move' }}
             />
+            
+            {/* Add background rectangle for label */}
+            <rect
+              x={(rect.x * scale)}
+              y={(rect.y * scale)}
+              width={(rect.label.length * 9)}  // Approximate width based on text length
+              height={25}  // Height to contain the text
+              fill="red"
+              opacity={0.8}
+            />
+            {/* Label text */}
             <text
-              x={rect.x * scale + 5}
-              y={rect.y * scale + 15}
-              fill={rect.color || getLabelColor(rect.label)}
-              fontSize="12px"
-              pointerEvents="none"
+              x={(rect.x * scale) + 5}
+              y={(rect.y * scale) + 20}
+              fill="yellow"
+              style={{
+                fontSize: '16px',
+                fontWeight: 'bold',
+                userSelect: 'none',
+                textShadow: '1px 1px 2px black'
+              }}
             >
               {rect.label}
             </text>
-            
+
             {/* Resize handles */}
-            <circle
-              cx={rect.x * scale}
-              cy={rect.y * scale}
-              r={4}
-              fill="white"
-              stroke={rect.color || getLabelColor(rect.label)}
-              strokeWidth="2"
-              cursor="nw-resize"
-              onMouseDown={(e) => handleResizeStart(e, index, 'nw')}
-            />
-            <circle
-              cx={(rect.x + rect.width) * scale}
-              cy={rect.y * scale}
-              r={4}
-              fill="white"
-              stroke={rect.color || getLabelColor(rect.label)}
-              strokeWidth="2"
-              cursor="ne-resize"
-              onMouseDown={(e) => handleResizeStart(e, index, 'ne')}
-            />
-            <circle
-              cx={rect.x * scale}
-              cy={(rect.y + rect.height) * scale}
-              r={4}
-              fill="white"
-              stroke={rect.color || getLabelColor(rect.label)}
-              strokeWidth="2"
-              cursor="sw-resize"
-              onMouseDown={(e) => handleResizeStart(e, index, 'sw')}
-            />
-            <circle
-              cx={(rect.x + rect.width) * scale}
-              cy={(rect.y + rect.height) * scale}
-              r={4}
-              fill="white"
-              stroke={rect.color || getLabelColor(rect.label)}
-              strokeWidth="2"
-              cursor="se-resize"
-              onMouseDown={(e) => handleResizeStart(e, index, 'se')}
-            />
+            {selectedRectIndex === index && (
+              <>
+                {['nw', 'ne', 'sw', 'se'].map(corner => {
+                  const x = corner.includes('e') 
+                    ? (rect.x + rect.width) * scale 
+                    : rect.x * scale;
+                  const y = corner.includes('s') 
+                    ? (rect.y + rect.height) * scale 
+                    : rect.y * scale;
+                  
+                  return (
+                    <circle
+                      key={corner}
+                      cx={x}
+                      cy={y}
+                      r={4}
+                      fill="white"
+                      stroke={rect.color}
+                      strokeWidth="2"
+                      onMouseDown={(e) => handleResizeStart(e, index, corner)}
+                      style={{ cursor: `${corner}-resize` }}
+                    />
+                  );
+                })}
+              </>
+            )}
           </g>
         ))}
-      {currentRect && (
-        <rect
-          x={currentRect.x * scale}
-          y={currentRect.y * scale}
-          width={currentRect.width * scale}
-          height={currentRect.height * scale}
-          fill={currentRect.color}
-          fillOpacity="0.1"
-          stroke={currentRect.color}
-          strokeWidth="2"
-          strokeDasharray="5,5"
-        />
-      )}
+
+      {/* Context Menu */}
       {contextMenu && (
         <foreignObject x="0" y="0" width="100%" height="100%">
-          <ContextMenu
-            x={contextMenu.x}
-            y={contextMenu.y}
-            rectIndex={contextMenu.rectIndex}
-            onClose={() => setContextMenu(null)}
-            rectangles={rectangles}
-            labels={labels}
-            onAnnotationsChange={onAnnotationsChange}
-          />
+          <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+            <ContextMenu
+              x={contextMenu.x}
+              y={contextMenu.y}
+              rectIndex={contextMenu.rectIndex}
+              onClose={() => setContextMenu(null)}
+              rectangles={rectangles}
+              labels={labels}
+              onAnnotationsChange={onAnnotationsChange}
+              getLabelColor={getLabelColor}
+            />
+          </div>
         </foreignObject>
       )}
     </svg>
