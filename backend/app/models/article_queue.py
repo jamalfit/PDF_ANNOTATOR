@@ -1,21 +1,19 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, Date
-from app.models.base import Base
-from datetime import datetime
+from sqlalchemy import Column, Integer, String, Date, DateTime, Text
+from sqlalchemy.sql import func
+from app.db.base_class import Base
 
 class ArticleQueue(Base):
     __tablename__ = "article_queue"
 
     id = Column(Integer, primary_key=True, index=True)
-    doi = Column(String(100), unique=True, nullable=False, index=True)
-    title = Column(Text)
-    authors = Column(Text)
-    journal = Column(Text)
-    publication_date = Column(Date)
-    pdf_s3_key = Column(String(255))
-    description = Column(Text)
-    status = Column(String(50), index=True, default="Downloaded")
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    annotation_data = Column(JSON)
-    annotation_notes = Column(Text)
-    annotation_status = Column(String, nullable=False, default="None") 
+    doi = Column(String, unique=True, index=True)
+    title = Column(String)
+    authors = Column(String, nullable=True)
+    journal = Column(String, nullable=True)
+    publication_date = Column(Date, nullable=True)
+    description = Column(Text, nullable=True)
+    status = Column(String, default="pending")  # pending, processing, completed, failed
+    priority = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+ 

@@ -1,11 +1,12 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+from pydantic import Field
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "PDF Segmenter"
     API_V1_STR: str = "/api/v1"
     DEBUG: bool = False
-    SECRET_KEY: str
+    SECRET_KEY: str = Field(..., env='SECRET_KEY')
     ADMIN_EMAIL: str
     
     # Database settings
@@ -14,11 +15,11 @@ class Settings(BaseSettings):
     DATABASE_MAX_OVERFLOW: int = 10
     
     # AWS Settings
-    AWS_ACCESS_KEY: str
-    AWS_SECRET_KEY: str
-    AWS_REGION: str
+    AWS_ACCESS_KEY: str = Field(..., env='AWS_ACCESS_KEY')
+    AWS_SECRET_KEY: str = Field(..., env='AWS_SECRET_KEY')
+    AWS_REGION: str = Field(..., env='AWS_REGION')
     AWS_ARTICLE_QUEUE_BUCKET: str
-    AWS_BUCKET_NAME: Optional[str] = None
+    AWS_BUCKET_NAME: str = Field(..., env='AWS_ARTICLE_QUEUE_BUCKET')
     
     # OpenAI Settings
     OPENAI_API_KEY: str
@@ -39,6 +40,8 @@ class Settings(BaseSettings):
     
     ENVIRONMENT: str = "development"
     
+    API_KEY: str = Field(default="your_default_api_key")
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
@@ -52,6 +55,11 @@ class Settings(BaseSettings):
             "aws_secret_access_key": self.AWS_SECRET_KEY,
             "region_name": self.AWS_REGION
         }
+
+    def model_post_init(self, *args, **kwargs):
+        super().model_post_init(*args, **kwargs)
+        if self.API_KEY == "your_default_api_key":
+            self.API_KEY = self.SECRET_KEY
 
 settings = Settings()
 

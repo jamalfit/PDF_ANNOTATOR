@@ -1,6 +1,20 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
+from app.schemas.article_queue import (
+    ArticleCreate,
+    ArticleUpdate,
+    ArticleResponse,
+    ArticleQueueStats,
+    ArticlePriorityUpdate
+)
+from app.schemas.document import (
+    DocumentCreate,
+    DocumentUpdate,
+    DocumentResponse,
+    DocumentStatusUpdate,
+    DocumentStats
+)
 
 class DocumentBase(BaseModel):
     title: str

@@ -2,6 +2,7 @@ import boto3
 from botocore.exceptions import ClientError
 from app.core.config import settings
 import logging
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -70,4 +71,36 @@ class S3Client:
             )
         except ClientError as e:
             logger.error(f"Error deleting from S3: {str(e)}")
+            raise
+
+    async def delete_file(self, s3_key: str) -> bool:
+        """Delete a file from S3 bucket"""
+        try:
+            self.s3.delete_object(
+                Bucket=self.bucket_name,
+                Key=s3_key
+            )
+            return True
+        except ClientError as e:
+            logger.error(f"Error deleting file from S3: {str(e)}")
+            raise
+
+    async def list_files(self, prefix: str = "") -> List[dict]:
+        """List files in S3 bucket"""
+        try:
+            response = self.s3.list_objects_v2(
+                Bucket=self.bucket_name,
+                Prefix=prefix
+            )
+            files = []
+            if 'Contents' in response:
+                for obj in response['Contents']:
+                    files.append({
+                        "key": obj['Key'],
+                        "size": obj['Size'],
+                        "last_modified": obj['LastModified'].isoformat()
+                    })
+            return files
+        except ClientError as e:
+            logger.error(f"Error listing S3 files: {str(e)}")
             raise 
