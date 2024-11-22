@@ -1,10 +1,16 @@
 import React from 'react';
-import MainMenu from './components/MainMenu';
+import ArticleList from './components/ArticleList';
+import './App.css';
 
 function App() {
   return (
     <div className="App">
-      <MainMenu />
+      <header className="App-header">
+        <h1>PDF Segmenter</h1>
+      </header>
+      <main>
+        <ArticleList />
+      </main>
     </div>
   );
 }
