@@ -1,23 +1,24 @@
+.annotation-layer {
+  pointer-events: all;
+  touch-action: none;
+}
+
 .annotation-layer rect {
   pointer-events: all;
-  transition: none;
-}
-
-.annotation-layer rect.dragging {
-  transition: none;
-}
-
-.annotation-layer circle {
-  cursor: pointer;
-  pointer-events: all;
+  transition: none !important;
+  animation: none !important;
+  transform: none !important;
 }
 
 .annotation-layer text {
   user-select: none;
   pointer-events: none;
+  transition: none !important;
 }
 
-.annotation-layer {
-  pointer-events: all;
-  touch-action: none;
+/* Ensure no transitions on any SVG elements */
+svg * {
+  transition: none !important;
+  animation: none !important;
+  transform: none !important;
 } 

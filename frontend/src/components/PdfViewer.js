@@ -9,7 +9,7 @@ import axios from 'axios';
 // Configure the PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
-const PdfViewer = ({ articleId }) => {
+const PdfViewer = ({ articleId, initialAnnotationData }) => {
   const [numPages, setNumPages] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1.0);
@@ -30,19 +30,19 @@ const PdfViewer = ({ articleId }) => {
 
   const getLabelColor = (label) => {
     const colorMap = {
-      'Title': '#FF6B6B',
-      'Authors': '#4ECDC4',
-      'Abstract': '#45B7D1',
-      'DOI': '#96CEB4',
-      'Introduction': '#FFEEAD',
-      'Materials and Methods': '#D4A5A5',
-      'Review Heading': '#9B9B9B',
-      'Illustration': '#FFD93D',
-      'Table': '#6C5B7B',
-      'References': '#C06C84',
-      'Keywords': '#F8B195'
+      'Title': '#FF6B6B',       // Coral Red
+      'Authors': '#4ECDC4',     // Turquoise
+      'Abstract': '#45B7D1',    // Sky Blue
+      'DOI': '#96CEB4',         // Sage Green
+      'Introduction': '#FFD93D', // Yellow
+      'Materials and Methods': '#FF8CC8', // Pink
+      'Review Heading': '#6C5B7B', // Purple
+      'Illustration': '#F8B195', // Peach
+      'Table': '#C06C84',       // Rose
+      'References': '#355C7D',  // Navy Blue
+      'Keywords': '#2ECC71'     // Emerald Green
     };
-    return colorMap[label] || '#CCCCCC';
+    return colorMap[label] || '#CCCCCC'; // Default gray if label not found
   };
 
   const onDocumentLoadSuccess = (pdf) => {
@@ -135,11 +135,12 @@ const PdfViewer = ({ articleId }) => {
           `http://localhost:8000/api/v1/article-queue/${articleId}`
         );
         
-        console.log('Article response:', articleResponse.data);
+        // First try to use initialAnnotationData, then fall back to API response
+        const annotationData = initialAnnotationData || articleResponse.data.annotation_data;
         
-        if (articleResponse.data.annotation_data) {
-          console.log('Found annotation data:', articleResponse.data.annotation_data);
-          const processedRectangles = processLoadedAnnotations(articleResponse.data.annotation_data);
+        if (annotationData) {
+          console.log('Found annotation data:', annotationData);
+          const processedRectangles = processLoadedAnnotations(annotationData);
           if (processedRectangles.length > 0) {
             console.log('Setting processed rectangles:', processedRectangles);
             setRectangles(processedRectangles);
@@ -148,70 +149,74 @@ const PdfViewer = ({ articleId }) => {
 
         // Load PDF
         const pdfUrl = `http://localhost:8000/api/v1/s3/get-pdf-by-key/${encodeURIComponent(articleResponse.data.pdf_s3_key)}`;
-        const pdfResponse = await axios.get(pdfUrl, { 
-          responseType: 'blob',
-          headers: { 'Accept': 'application/pdf' }
-        });
-        
-        const url = URL.createObjectURL(pdfResponse.data);
-        setPdfUrl(url);
-
+        setPdfUrl(pdfUrl);
       } catch (error) {
         console.error('Error loading article data:', error);
-        alert(`Failed to load article data: ${error.message}`);
       }
     };
 
-    if (articleId) {
-      loadArticleData();
-    }
-
-    return () => {
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
-      }
-    };
-  }, [articleId]);
+    loadArticleData();
+  }, [articleId, initialAnnotationData]);
 
   const extractTextFromPdf = async (rect, pdfPage) => {
     try {
       const textContent = await pdfPage.getTextContent();
       const viewport = pdfPage.getViewport({ scale: 1.0 });
-
-      // Rectangle coordinates in PDF space
-      const rectInPdfSpace = {
+      
+      // Convert screen coordinates to PDF coordinates
+      const pdfRect = {
         left: rect.x,
         right: rect.x + rect.width,
-        top: rect.y,
-        bottom: rect.y + rect.height,
+        // Convert y-coordinates to PDF space (origin at bottom-left)
+        bottom: viewport.height - rect.y,
+        top: viewport.height - (rect.y + rect.height)
       };
 
-      // Adjust coordinates since PDF origin is at bottom-left
-      const rectInViewport = {
-        x: rectInPdfSpace.left,
-        y: viewport.height - rectInPdfSpace.bottom,
-        width: rect.width,
-        height: rect.height,
-      };
-
-      // Filter text items within the rectangle
-      const textItems = textContent.items.filter((item) => {
-        const tx = item.transform[4];
-        const ty = item.transform[5];
-
-        // Positions in PDF coordinate space
-        const [x, y] = viewport.convertToViewportPoint(tx, ty);
-
-        return (
-          x >= rectInViewport.x &&
-          x <= rectInViewport.x + rectInViewport.width &&
-          y >= rectInViewport.y &&
-          y <= rectInViewport.y + rectInViewport.height
-        );
+      console.log('PDF Space Rectangle:', {
+        rect: rect,
+        pdfRect: pdfRect,
+        viewportHeight: viewport.height
       });
 
-      const extractedText = textItems.map((item) => item.str).join(' ');
+      // Filter and collect text items
+      const textItems = [];
+      
+      for (const item of textContent.items) {
+        // Get text item position in PDF space
+        const itemX = item.transform[4];
+        const itemY = item.transform[5];
 
+        // Log coordinates for debugging
+        console.log('Text Item:', {
+          text: item.str,
+          x: itemX,
+          y: itemY,
+          bounds: pdfRect
+        });
+
+        // Check if text item is within rectangle bounds in PDF space
+        if (
+          itemX >= pdfRect.left &&
+          itemX <= pdfRect.right &&
+          itemY >= pdfRect.top &&
+          itemY <= pdfRect.bottom
+        ) {
+          textItems.push(item);
+          console.log('Found text:', item.str);
+        }
+      }
+
+      // Sort text items top to bottom, left to right
+      textItems.sort((a, b) => {
+        if (Math.abs(b.transform[5] - a.transform[5]) > 5) {
+          return b.transform[5] - a.transform[5]; // Sort by y-coordinate
+        }
+        return a.transform[4] - b.transform[4]; // Sort by x-coordinate if on same line
+      });
+
+      const extractedText = textItems.map(item => item.str).join(' ');
+      console.log('Extracted text:', extractedText);
+      
       return extractedText;
     } catch (error) {
       console.error('Error extracting text:', error);
@@ -221,10 +226,22 @@ const PdfViewer = ({ articleId }) => {
 
   const handleSaveAnnotations = async () => {
     try {
-      const currentPdfPage = await pdfDoc.getPage(currentPage);
+      const pdfPages = {};
+      
+      console.log('Starting annotation save process...');
+      
       const annotationsWithText = await Promise.all(
-        rectangles.map(async rect => {
-          const text = await extractTextFromPdf(rect, currentPdfPage);
+        rectangles.map(async (rect) => {
+          // Load PDF page if not already loaded
+          if (!pdfPages[rect.page]) {
+            pdfPages[rect.page] = await pdfDoc.getPage(rect.page);
+          }
+          const pdfPage = pdfPages[rect.page];
+          
+          // Extract text
+          const text = await extractTextFromPdf(rect, pdfPage);
+          console.log('Extracted text for rectangle:', text);
+
           return {
             coordinates: {
               left: Math.round(rect.x),
@@ -242,6 +259,8 @@ const PdfViewer = ({ articleId }) => {
       const annotationData = {
         annotations: annotationsWithText
       };
+
+      console.log('Final annotation data:', annotationData);
 
       const response = await axios.put(
         `http://localhost:8000/api/v1/article-queue/${articleId}/annotations`,

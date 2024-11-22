@@ -299,7 +299,10 @@ const ArticleList = () => {
             }}>Close</button>
           </div>
           <div className="annotator-content">
-            <PdfViewer articleId={selectedArticle.id} />
+            <PdfViewer 
+              articleId={selectedArticle.id} 
+              initialAnnotationData={selectedArticle.annotation_data}
+            />
           </div>
         </div>
       )}

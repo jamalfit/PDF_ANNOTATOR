@@ -288,7 +288,6 @@ table td:last-child {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s;
 }
 
 .btn-close:hover {
@@ -388,5 +387,42 @@ table td:last-child {
 
 .article-table button {
   margin-right: 8px;
+}
+
+/* Remove all transitions and animations */
+* {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Update button styles to remove transitions */
+button {
+  transition: none !important;
+}
+
+.btn-view:hover,
+.btn-edit:hover,
+.btn-close:hover,
+.btn-view-annotations:hover,
+.btn-annotate:hover {
+  transition: none !important;
+}
+
+/* Remove any transition from modal */
+.modal-overlay {
+  transition: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Remove transitions from JSON viewer */
+.json-content::-webkit-scrollbar-thumb {
+  transition: none !important;
+}
+
+/* Remove any remaining transitions */
+.btn-close,
+.btn-view-annotations,
+.btn-annotate {
+  transition: none !important;
 }
   
