@@ -1,0 +1,132 @@
+.context-menu {
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    min-width: 150px;
+    z-index: 1000;
+  }
+  
+  .menu-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .menu-item:hover {
+    background-color: #f5f5f5;
+  }
+  
+  .menu-item.delete {
+    color: #dc3545;
+  }
+  
+  .menu-item.delete:hover {
+    background-color: #ffebee;
+  }
+  
+  .menu-item select {
+    margin-left: 8px;
+    padding: 2px 4px;
+    border-radius: 3px;
+  }
+  
+  /* Modal styles for text viewer */
+  .text-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+  }
+  
+  .text-modal-content {
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    min-width: 300px;
+    max-width: 500px;
+    z-index: 1001;
+  }
+  
+  .text-modal-header {
+    padding: 8px 12px;
+    background: #f0f0f0;
+    border-bottom: 1px solid #ccc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .text-modal-header h3 {
+    margin: 0;
+    color: #333;
+  }
+  
+  .text-modal-body {
+    padding: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+    text-align: left;
+    color: #000;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  .close-button {
+    padding: 5px 10px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  
+  .close-button:hover {
+    background-color: #c82333;
+  }
+  
+  /* Ensure no transitions or animations */
+  .context-menu,
+  .text-modal-overlay,
+  .text-modal-content,
+  .menu-item,
+  .close-button {
+    transition: none !important;
+    animation: none !important;
+  }
+  
+  /* Scrollbar styling */
+  .text-modal-body::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .text-modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  
+  .text-modal-body::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+  }
+  
+  .text-modal-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+  
+  .menu-header {
+    user-select: none;
+  }

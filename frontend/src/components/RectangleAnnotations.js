@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import './ContextMenuPdfViewer.css';
 
 const RectangleAnnotations = ({
   scale,
@@ -11,15 +12,205 @@ const RectangleAnnotations = ({
   getLabelColor,
 }) => {
   const [isDrawing, setIsDrawing] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeHandle, setResizeHandle] = useState(null);
   const [startPoint, setStartPoint] = useState(null);
   const [currentRect, setCurrentRect] = useState(null);
   const [selectedRectIndex, setSelectedRectIndex] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(null);
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeHandle, setResizeHandle] = useState(null);
-
+  const [contextMenu, setContextMenu] = useState(null);
   const svgRef = useRef(null);
+
+  // Context Menu Component
+  const ContextMenu = ({ x, y, rectIndex, onClose, rectangles, labels, onAnnotationsChange }) => {
+    const rect = rectangles[rectIndex];
+    const [showJson, setShowJson] = useState(false);
+    const [menuPosition, setMenuPosition] = useState({ x, y: Math.min(y, window.innerHeight / 3) });
+    const [jsonPosition, setJsonPosition] = useState({ x: window.innerWidth / 4, y: window.innerHeight / 4 });
+    
+    // Add click outside handler
+    React.useEffect(() => {
+      const handleClickOutside = (e) => {
+        if (!e.target.closest('.context-menu') && !e.target.closest('.text-modal-content')) {
+          onClose();
+        }
+      };
+      
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [onClose]);
+
+    const handleDelete = () => {
+      const newRectangles = rectangles.filter((_, index) => index !== rectIndex);
+      onAnnotationsChange(newRectangles);
+      onClose();
+    };
+
+    const handleLabelChange = (newLabel) => {
+      const updatedRectangles = rectangles.map((r, index) => 
+        index === rectIndex ? { 
+          ...r, 
+          label: newLabel,
+          color: getLabelColor(newLabel)
+        } : r
+      );
+      onAnnotationsChange(updatedRectangles);
+    };
+
+    const handleMenuMouseDown = (e) => {
+      const startX = e.clientX - menuPosition.x;
+      const startY = e.clientY - menuPosition.y;
+      
+      const handleMouseMove = (e) => {
+        setMenuPosition({
+          x: e.clientX - startX,
+          y: e.clientY - startY
+        });
+      };
+      
+      const handleMouseUp = () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+      
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    };
+
+    const handleJsonMouseDown = (e) => {
+      const startX = e.clientX - jsonPosition.x;
+      const startY = e.clientY - jsonPosition.y;
+      
+      const handleMouseMove = (e) => {
+        setJsonPosition({
+          x: e.clientX - startX,
+          y: e.clientY - startY
+        });
+      };
+      
+      const handleMouseUp = () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+      
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    };
+
+    return (
+      <>
+        <div 
+          className="context-menu"
+          style={{
+            position: 'fixed',
+            top: menuPosition.y,
+            left: menuPosition.x,
+            cursor: 'move'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div 
+            className="menu-header"
+            onMouseDown={handleMenuMouseDown}
+            style={{
+              padding: '5px',
+              background: '#f0f0f0',
+              borderBottom: '1px solid #ccc',
+              cursor: 'move'
+            }}
+          >
+            ⋮⋮ Menu
+            <button 
+              onClick={onClose}
+              style={{
+                float: 'right',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+          <div className="menu-item" onClick={() => setShowJson(true)}>
+            View Text
+          </div>
+          <div className="menu-item">
+            Change Label
+            <select 
+              value={rect.label}
+              onChange={(e) => handleLabelChange(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {labels.map(label => (
+                <option key={label} value={label}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div 
+            className="menu-item delete" 
+            onClick={handleDelete}
+            style={{ cursor: 'pointer' }}
+          >
+            Delete Rectangle
+          </div>
+        </div>
+
+        {showJson && (
+          <div className="text-modal-overlay" onClick={() => setShowJson(false)}>
+            <div 
+              className="text-modal-content"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: 'fixed',
+                top: jsonPosition.y,
+                left: jsonPosition.x,
+                transform: 'none'
+              }}
+            >
+              <div 
+                className="text-modal-header"
+                onMouseDown={handleJsonMouseDown}
+                style={{ cursor: 'move' }}
+              >
+                <h3>Rectangle Text Content</h3>
+                <button 
+                  className="close-button" 
+                  onClick={() => setShowJson(false)}
+                  style={{
+                    float: 'right',
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="text-modal-body">
+                {rect.text || 'No text content'}
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
+
+  // Replace the Ctrl+click handler with double-click
+  const handleRectClick = (e, index) => {
+    if (e.detail === 2) { // Check for double-click
+      e.preventDefault();
+      e.stopPropagation();
+      
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        rectIndex: index
+      });
+    }
+  };
 
   // Function to get mouse position relative to SVG
   const getMousePosition = (e) => {
@@ -230,6 +421,7 @@ const RectangleAnnotations = ({
               strokeWidth={selectedRectIndex === index ? '3' : '2'}
               cursor="move"
               onMouseDown={(e) => handleRectMouseDown(e, index)}
+              onClick={(e) => handleRectClick(e, index)}
             />
             <text
               x={rect.x * scale + 5}
@@ -296,6 +488,19 @@ const RectangleAnnotations = ({
           strokeWidth="2"
           strokeDasharray="5,5"
         />
+      )}
+      {contextMenu && (
+        <foreignObject x="0" y="0" width="100%" height="100%">
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            rectIndex={contextMenu.rectIndex}
+            onClose={() => setContextMenu(null)}
+            rectangles={rectangles}
+            labels={labels}
+            onAnnotationsChange={onAnnotationsChange}
+          />
+        </foreignObject>
       )}
     </svg>
   );
