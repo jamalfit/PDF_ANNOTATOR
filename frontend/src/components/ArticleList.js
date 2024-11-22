@@ -21,15 +21,64 @@ const PDFViewer = ({ pdfUrl, onClose }) => {
   );
 };
 
+const JsonViewer = ({ data, onClose }) => {
+  // Function to format the JSON with syntax highlighting
+  const formatJson = (json) => {
+    if (!json) return '';
+    
+    // Convert special characters to HTML entities
+    const htmlEntities = (str) => {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    };
+
+    // Add syntax highlighting
+    const highlighted = JSON.stringify(json, null, 2)
+      .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (match) => {
+        let cls = 'json-number';
+        if (/^"/.test(match)) {
+          if (/:$/.test(match)) {
+            cls = 'json-key';
+          } else {
+            cls = 'json-string';
+          }
+        } else if (/true|false/.test(match)) {
+          cls = 'json-boolean';
+        } else if (/null/.test(match)) {
+          cls = 'json-null';
+        }
+        return `<span class="${cls}">${htmlEntities(match)}</span>`;
+      });
+
+    return highlighted;
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content json-viewer">
+        <div className="json-header">
+          <h3>Annotation Data</h3>
+          <button className="btn-close" onClick={onClose}>Close</button>
+        </div>
+        <div className="json-content">
+          <pre dangerouslySetInnerHTML={{ __html: formatJson(data) }} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ArticleView = ({ article, onClose }) => {
   const [showPDF, setShowPDF] = useState(false);
+  const [showAnnotations, setShowAnnotations] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
 
   const handleViewPDF = async () => {
     try {
-      console.log('Article data:', article);
       const response = await axios.get(`http://localhost:8000/api/v1/s3/get-presigned-url/${article.id}`);
-      console.log('S3 response:', response.data);
       setPdfUrl(response.data.url);
       setShowPDF(true);
     } catch (err) {
@@ -66,11 +115,24 @@ const ArticleView = ({ article, onClose }) => {
           >
             View PDF
           </button>
+          <button 
+            className="btn-view-annotations" 
+            onClick={() => setShowAnnotations(true)}
+            disabled={!article.annotation_data}
+          >
+            View Annotations
+          </button>
           <button className="btn-close" onClick={onClose}>Close</button>
         </div>
       </div>
       {showPDF && pdfUrl && (
         <PDFViewer pdfUrl={pdfUrl} onClose={() => setShowPDF(false)} />
+      )}
+      {showAnnotations && article.annotation_data && (
+        <JsonViewer 
+          data={article.annotation_data} 
+          onClose={() => setShowAnnotations(false)} 
+        />
       )}
     </div>
   );
@@ -83,21 +145,25 @@ const ArticleList = () => {
   const [selectedArticle, setSelectedArticle] = useState(null);
 
   useEffect(() => {
+    console.log('Component mounted, fetching articles...');
     fetchArticles();
   }, []);
 
   const fetchArticles = async () => {
     try {
+      console.log('Making API request...');
       const response = await axios.get('http://localhost:8000/api/v1/article-queue/');
-      console.log('Articles data:', response.data);
+      console.log('API Response:', response.data);
       setArticles(response.data);
       setLoading(false);
     } catch (err) {
-      setError('Failed to fetch articles');
+      console.error('Error details:', err.response || err);
+      setError(`Failed to fetch articles: ${err.message}`);
       setLoading(false);
-      console.error('Error fetching articles:', err);
     }
   };
+
+  console.log('Current state:', { loading, error, articlesCount: articles.length });
 
   const handleView = (articleId) => {
     const article = articles.find(a => a.id === articleId);
