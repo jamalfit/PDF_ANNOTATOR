@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './ArticleList.css';
+import PdfViewer from './PdfViewer';
 
 const PDFViewer = ({ pdfUrl, onClose }) => {
   return (
@@ -74,6 +75,7 @@ const JsonViewer = ({ data, onClose }) => {
 const ArticleView = ({ article, onClose }) => {
   const [showPDF, setShowPDF] = useState(false);
   const [showAnnotations, setShowAnnotations] = useState(false);
+  const [showAnnotator, setShowAnnotator] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
 
   const handleViewPDF = async () => {
@@ -84,6 +86,21 @@ const ArticleView = ({ article, onClose }) => {
     } catch (err) {
       console.error('Error getting PDF URL:', err);
       alert(`Failed to load PDF: ${err.response?.data?.detail || err.message}`);
+    }
+  };
+
+  const handleAnnotate = async () => {
+    if (!article.pdf_s3_key) {
+      alert('No PDF available for annotation');
+      return;
+    }
+    try {
+      const response = await axios.get(`http://localhost:8000/api/v1/s3/get-presigned-url/${article.id}`);
+      setPdfUrl(response.data.url);
+      setShowAnnotator(true);
+    } catch (err) {
+      console.error('Error getting PDF URL:', err);
+      alert(`Failed to load PDF for annotation: ${err.response?.data?.detail || err.message}`);
     }
   };
 
@@ -116,6 +133,13 @@ const ArticleView = ({ article, onClose }) => {
             View PDF
           </button>
           <button 
+            className="btn-annotate" 
+            onClick={handleAnnotate}
+            disabled={!article.pdf_s3_key}
+          >
+            Annotate
+          </button>
+          <button 
             className="btn-view-annotations" 
             onClick={() => setShowAnnotations(true)}
             disabled={!article.annotation_data}
@@ -127,6 +151,17 @@ const ArticleView = ({ article, onClose }) => {
       </div>
       {showPDF && pdfUrl && (
         <PDFViewer pdfUrl={pdfUrl} onClose={() => setShowPDF(false)} />
+      )}
+      {showAnnotator && pdfUrl && (
+        <div className="annotator-modal">
+          <div className="annotator-header">
+            <h3>PDF Annotator</h3>
+            <button className="btn-close" onClick={() => setShowAnnotator(false)}>Close</button>
+          </div>
+          <div className="annotator-content">
+            <PdfViewer fileURL={pdfUrl} />
+          </div>
+        </div>
       )}
       {showAnnotations && article.annotation_data && (
         <JsonViewer 
@@ -143,6 +178,7 @@ const ArticleList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedArticle, setSelectedArticle] = useState(null);
+  const [showAnnotator, setShowAnnotator] = useState(false);
 
   useEffect(() => {
     console.log('Component mounted, fetching articles...');
@@ -168,6 +204,22 @@ const ArticleList = () => {
   const handleView = (articleId) => {
     const article = articles.find(a => a.id === articleId);
     setSelectedArticle(article);
+  };
+
+  const handleAnnotate = async (articleId) => {
+    const article = articles.find(a => a.id === articleId);
+    if (!article.pdf_s3_key) {
+      alert('No PDF available for annotation');
+      return;
+    }
+    try {
+      // Set the selected article and show annotator
+      setSelectedArticle(article);
+      setShowAnnotator(true);
+    } catch (err) {
+      console.error('Error setting up annotator:', err);
+      alert(`Failed to load annotator: ${err.message}`);
+    }
   };
 
   if (loading) return <div>Loading articles...</div>;
@@ -215,8 +267,12 @@ const ArticleList = () => {
                   <button className="btn-view" onClick={() => handleView(article.id)}>
                     View
                   </button>
-                  <button className="btn-edit" onClick={() => console.log('Edit', article.id)}>
-                    Edit
+                  <button 
+                    className="btn-annotate"
+                    onClick={() => handleAnnotate(article.id)}
+                    disabled={!article.pdf_s3_key}
+                  >
+                    Annotate
                   </button>
                 </td>
               </tr>
@@ -225,11 +281,27 @@ const ArticleList = () => {
         </table>
       </div>
 
-      {selectedArticle && (
+      {/* Separate the view modal from the annotator modal */}
+      {selectedArticle && !showAnnotator && (
         <ArticleView 
           article={selectedArticle} 
           onClose={() => setSelectedArticle(null)} 
         />
+      )}
+
+      {showAnnotator && selectedArticle && (
+        <div className="annotator-modal">
+          <div className="annotator-header">
+            <h3>PDF Annotator</h3>
+            <button className="btn-close" onClick={() => {
+              setShowAnnotator(false);
+              setSelectedArticle(null);
+            }}>Close</button>
+          </div>
+          <div className="annotator-content">
+            <PdfViewer articleId={selectedArticle.id} />
+          </div>
+        </div>
       )}
     </div>
   );

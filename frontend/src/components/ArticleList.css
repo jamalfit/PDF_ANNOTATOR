@@ -372,4 +372,60 @@ table td:last-child {
   display: flex;
   gap: 10px;
   margin-top: 20px;
-} 
+}
+
+.btn-annotate {
+  padding: 6px 12px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-annotate:hover {
+  background-color: #218838;
+}
+
+.btn-annotate:disabled {
+  background-color: #b8b8b8;
+  cursor: not-allowed;
+}
+
+.annotator-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: white;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+}
+
+.annotator-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.annotator-content {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+  height: calc(100vh - 60px); /* Adjust based on header height */
+}
+
+.article-table td:last-child {
+  white-space: nowrap;
+  min-width: 160px;
+}
+
+.article-table button {
+  margin-right: 8px;
+}
+  

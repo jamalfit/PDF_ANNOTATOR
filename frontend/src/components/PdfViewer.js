@@ -8,7 +8,7 @@ import './PdfViewer.css';
 // Configure the PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
-const PdfViewer = ({ fileURL }) => {
+const PdfViewer = ({ articleId }) => {
   // State variables
   const [rectangles, setRectangles] = useState([]);
   const [numPages, setNumPages] = useState(null);
@@ -74,6 +74,45 @@ const PdfViewer = ({ fileURL }) => {
     setRectangles(newRectangles);
   };
 
+  // Add state for PDF URL
+  const [pdfUrl, setPdfUrl] = useState(null);
+
+  // Load PDF when component mounts
+  useEffect(() => {
+    const loadPdf = async () => {
+      try {
+        // Get PDF directly from our endpoint
+        const response = await fetch(
+          `http://localhost:8000/api/v1/s3/get-pdf/${articleId}`,
+          {
+            method: 'GET',
+          }
+        );
+        
+        if (!response.ok) {
+          throw new Error('Failed to load PDF');
+        }
+
+        const pdfBlob = await response.blob();
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        setPdfUrl(pdfUrl);
+      } catch (error) {
+        console.error('Error loading PDF:', error);
+      }
+    };
+
+    if (articleId) {
+      loadPdf();
+    }
+
+    // Cleanup
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+    };
+  }, [articleId]);
+
   return (
     <div style={{ margin: '20px' }}>
       <PdfControls
@@ -107,17 +146,19 @@ const PdfViewer = ({ fileURL }) => {
           margin: '0 auto',
         }}
       >
-        <Document file={fileURL} onLoadSuccess={onDocumentLoadSuccess}>
-          <Page
-            key={`page_${currentPage}`}
-            pageNumber={currentPage}
-            scale={scale}
-            onLoadSuccess={onPageLoadSuccess}
-            renderTextLayer={true}
-            renderAnnotationLayer={false}
-            style={{ pointerEvents: 'none' }}
-          />
-        </Document>
+        {pdfUrl && (  // Only render Document when we have the URL
+          <Document file={pdfUrl} onLoadSuccess={onDocumentLoadSuccess}>
+            <Page
+              key={`page_${currentPage}`}
+              pageNumber={currentPage}
+              scale={scale}
+              onLoadSuccess={onPageLoadSuccess}
+              renderTextLayer={true}
+              renderAnnotationLayer={false}
+              style={{ pointerEvents: 'none' }}
+            />
+          </Document>
+        )}
 
         <RectangleAnnotations
           scale={scale}
