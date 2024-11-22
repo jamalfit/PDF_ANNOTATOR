@@ -16,6 +16,8 @@ const RectangleAnnotations = ({
   const [selectedRectIndex, setSelectedRectIndex] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(null);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeHandle, setResizeHandle] = useState(null);
 
   const svgRef = useRef(null);
 
@@ -93,6 +95,45 @@ const RectangleAnnotations = ({
       });
 
       onAnnotationsChange(updatedRectangles);
+    } else if (isResizing && selectedRectIndex !== null) {
+      e.preventDefault();
+      
+      const { x: mouseX, y: mouseY } = getMousePosition(e);
+      const rect = rectangles[selectedRectIndex];
+      let newRect = { ...rect };
+
+      switch (resizeHandle) {
+        case 'nw':
+          newRect.width = (rect.x + rect.width - mouseX);
+          newRect.height = (rect.y + rect.height - mouseY);
+          newRect.x = mouseX;
+          newRect.y = mouseY;
+          break;
+        case 'ne':
+          newRect.width = (mouseX - rect.x);
+          newRect.height = (rect.y + rect.height - mouseY);
+          newRect.y = mouseY;
+          break;
+        case 'sw':
+          newRect.width = (rect.x + rect.width - mouseX);
+          newRect.height = (mouseY - rect.y);
+          newRect.x = mouseX;
+          break;
+        case 'se':
+          newRect.width = (mouseX - rect.x);
+          newRect.height = (mouseY - rect.y);
+          break;
+        default:
+          break;
+      }
+
+      // Ensure minimum size
+      if (newRect.width > 5 && newRect.height > 5) {
+        const updatedRectangles = rectangles.map((r, index) =>
+          index === selectedRectIndex ? newRect : r
+        );
+        onAnnotationsChange(updatedRectangles);
+      }
     }
   };
 
@@ -117,6 +158,12 @@ const RectangleAnnotations = ({
       
       // Important: Force a save after moving a rectangle
       onAnnotationsChange([...rectangles]);
+    } else if (isResizing) {
+      e.preventDefault();
+      setIsResizing(false);
+      setResizeHandle(null);
+      setSelectedRectIndex(null);
+      onAnnotationsChange([...rectangles]);
     }
   };
 
@@ -139,6 +186,18 @@ const RectangleAnnotations = ({
 
     setIsDragging(true);
     setSelectedRectIndex(index);
+  };
+
+  const handleResizeStart = (e, index, handle) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    setIsResizing(true);
+    setSelectedRectIndex(index);
+    setResizeHandle(handle);
+    
+    const { x, y } = getMousePosition(e);
+    setStartPoint({ x, y });
   };
 
   return (
@@ -181,6 +240,48 @@ const RectangleAnnotations = ({
             >
               {rect.label}
             </text>
+            
+            {/* Resize handles */}
+            <circle
+              cx={rect.x * scale}
+              cy={rect.y * scale}
+              r={4}
+              fill="white"
+              stroke={rect.color || getLabelColor(rect.label)}
+              strokeWidth="2"
+              cursor="nw-resize"
+              onMouseDown={(e) => handleResizeStart(e, index, 'nw')}
+            />
+            <circle
+              cx={(rect.x + rect.width) * scale}
+              cy={rect.y * scale}
+              r={4}
+              fill="white"
+              stroke={rect.color || getLabelColor(rect.label)}
+              strokeWidth="2"
+              cursor="ne-resize"
+              onMouseDown={(e) => handleResizeStart(e, index, 'ne')}
+            />
+            <circle
+              cx={rect.x * scale}
+              cy={(rect.y + rect.height) * scale}
+              r={4}
+              fill="white"
+              stroke={rect.color || getLabelColor(rect.label)}
+              strokeWidth="2"
+              cursor="sw-resize"
+              onMouseDown={(e) => handleResizeStart(e, index, 'sw')}
+            />
+            <circle
+              cx={(rect.x + rect.width) * scale}
+              cy={(rect.y + rect.height) * scale}
+              r={4}
+              fill="white"
+              stroke={rect.color || getLabelColor(rect.label)}
+              strokeWidth="2"
+              cursor="se-resize"
+              onMouseDown={(e) => handleResizeStart(e, index, 'se')}
+            />
           </g>
         ))}
       {currentRect && (
