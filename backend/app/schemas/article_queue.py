@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, date
 
@@ -9,8 +9,8 @@ class ArticleBase(BaseModel):
     journal: Optional[str] = None
     publication_date: Optional[date] = None
     description: Optional[str] = None
-    priority: int = Field(default=0)
-    status: str = Field(default="pending")
+    status: str = "pending"
+    pdf_s3_key: Optional[str] = None
 
 class ArticleCreate(ArticleBase):
     pass
@@ -22,23 +22,23 @@ class ArticleUpdate(BaseModel):
     journal: Optional[str] = None
     publication_date: Optional[date] = None
     description: Optional[str] = None
-    priority: Optional[int] = None
     status: Optional[str] = None
-
-class ArticlePriorityUpdate(BaseModel):
-    priority: int
+    pdf_s3_key: Optional[str] = None
 
 class ArticleResponse(ArticleBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    annotation_data: Optional[dict] = None
 
     class Config:
         from_attributes = True
 
 class ArticleQueueStats(BaseModel):
-    total_articles: int
-    pending_articles: int
-    processing_articles: int
-    completed_articles: int
-    failed_articles: int 
+    total: int
+    pending: int
+    completed: int
+    failed: int
+
+    class Config:
+        from_attributes = True

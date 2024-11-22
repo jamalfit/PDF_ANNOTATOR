@@ -1,0 +1,23 @@
+.annotation-layer rect {
+  pointer-events: all;
+  transition: none;
+}
+
+.annotation-layer rect.dragging {
+  transition: none;
+}
+
+.annotation-layer circle {
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.annotation-layer text {
+  user-select: none;
+  pointer-events: none;
+}
+
+.annotation-layer {
+  pointer-events: all;
+  touch-action: none;
+} 

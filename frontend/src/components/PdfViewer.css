@@ -74,3 +74,33 @@
 .context-menu li:hover {
   background-color: #eee;
 }
+
+.btn-save-annotations {
+  padding: 8px 16px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.btn-save-annotations:hover {
+  background-color: #218838;
+}
+
+.annotation-layer rect {
+  transition: all 0.2s ease;
+}
+
+.annotation-layer rect.highlighted {
+  stroke-width: 3px;
+  filter: brightness(1.2);
+}
+
+.annotation-layer text {
+  font-family: Arial, sans-serif;
+  font-weight: bold;
+  pointer-events: none;
+  user-select: none;
+}

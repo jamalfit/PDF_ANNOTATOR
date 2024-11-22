@@ -230,38 +230,18 @@ table td:last-child {
 
 .json-viewer {
   width: 95%;
-  height: 90vh;
   max-width: 1200px;
-  display: flex;
-  flex-direction: column;
-  background: #1e1e1e;  /* Dark theme background */
+  height: 90vh;
+  background: #1e1e1e;
+  color: #d4d4d4;
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.json-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 20px;
-  background: #252526;  /* Slightly lighter than background */
-  border-bottom: 1px solid #333;
-  border-radius: 8px 8px 0 0;
-}
-
-.json-header h3 {
-  color: #fff;
-  margin: 0;
-  font-size: 1.2em;
+  overflow: hidden;
 }
 
 .json-content {
-  flex-grow: 1;
-  overflow-y: auto;
   padding: 20px;
-  background: #1e1e1e;
-  border-radius: 0 0 8px 8px;
-  text-align: left;
+  overflow-y: auto;
+  height: calc(100% - 60px);
 }
 
 .json-content pre {
@@ -271,32 +251,13 @@ table td:last-child {
   font-family: 'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 14px;
   line-height: 1.6;
-  color: #d4d4d4;
-  text-align: left;
-  padding-left: 0;
-  display: block;
 }
 
-/* JSON syntax highlighting */
-.json-key {
-  color: #9cdcfe;  /* Light blue for keys */
-}
-
-.json-string {
-  color: #ce9178;  /* Coral for strings */
-}
-
-.json-number {
-  color: #b5cea8;  /* Light green for numbers */
-}
-
-.json-boolean {
-  color: #569cd6;  /* Blue for booleans */
-}
-
-.json-null {
-  color: #569cd6;  /* Blue for null */
-}
+.json-key { color: #9cdcfe; }
+.json-string { color: #ce9178; }
+.json-number { color: #b5cea8; }
+.json-boolean { color: #569cd6; }
+.json-null { color: #569cd6; }
 
 /* Scrollbar styling */
 .json-content::-webkit-scrollbar {

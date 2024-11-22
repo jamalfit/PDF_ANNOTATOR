@@ -15,11 +15,10 @@ class Settings(BaseSettings):
     DATABASE_MAX_OVERFLOW: int = 10
     
     # AWS Settings
-    AWS_ACCESS_KEY: str = Field(..., env='AWS_ACCESS_KEY')
-    AWS_SECRET_KEY: str = Field(..., env='AWS_SECRET_KEY')
-    AWS_REGION: str = Field(..., env='AWS_REGION')
+    AWS_ACCESS_KEY: str
+    AWS_SECRET_KEY: str
+    AWS_REGION: str
     AWS_ARTICLE_QUEUE_BUCKET: str
-    AWS_BUCKET_NAME: str = Field(..., env='AWS_ARTICLE_QUEUE_BUCKET')
     
     # OpenAI Settings
     OPENAI_API_KEY: str

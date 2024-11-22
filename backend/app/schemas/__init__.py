@@ -2,11 +2,11 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 from app.schemas.article_queue import (
+    ArticleBase,
     ArticleCreate,
     ArticleUpdate,
     ArticleResponse,
-    ArticleQueueStats,
-    ArticlePriorityUpdate
+    # ArticleQueueStats  # Comment this out or remove it
 )
 from app.schemas.document import (
     DocumentCreate,
