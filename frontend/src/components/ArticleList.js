@@ -294,8 +294,7 @@ const ArticleList = () => {
           </div>
           <div className="annotator-content">
             <PdfViewer 
-              articleId={selectedArticle.id} 
-              initialAnnotationData={selectedArticle.annotation_data}
+              pdfS3Key={selectedArticle.pdf_s3_key}
             />
           </div>
         </div>
