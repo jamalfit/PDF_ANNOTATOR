@@ -1,118 +1,104 @@
-import React, { useState } from 'react';
-import './AnnotationsList.css';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import PdfViewer from './PdfViewer';
 
-const AnnotationsList = ({ 
-  rectangles, 
-  onJumpToAnnotation, 
-  onDeleteAnnotation, 
-  currentPage,
-  setCurrentPage,
-  onClose
-}) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] = useState({ x: '50%', y: '50%' });
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+const ArticleList = () => {
+  const [articles, setArticles] = useState([]);
+  const [showAnnotator, setShowAnnotator] = useState(false);
+  const [selectedArticle, setSelectedArticle] = useState(null);
 
-  const truncateText = (text, maxLength = 20) => {
-    if (!text) return 'No text available';
-    const cleanText = text.replace(/\s+/g, ' ').trim();
-    return cleanText.length > maxLength 
-      ? `${cleanText.substring(0, maxLength)}...` 
-      : cleanText;
-  };
+  useEffect(() => {
+    const fetchArticles = async () => {
+      try {
+        const response = await axios.get('http://localhost:8000/api/v1/articles');
+        setArticles(response.data);
+      } catch (error) {
+        console.error('Error fetching articles:', error);
+      }
+    };
 
-  const handleJumpTo = (rect) => {
-    if (rect.pageNumber !== currentPage) {
-      setCurrentPage(rect.pageNumber);
-    }
-    onJumpToAnnotation(rect);
-  };
-
-  const handleDragStart = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-    const rect = e.currentTarget.getBoundingClientRect();
-    setDragOffset({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
-  };
-
-  const handleDrag = (e) => {
-    if (!isDragging) return;
-    e.preventDefault();
-    const newX = e.clientX - dragOffset.x;
-    const newY = e.clientY - dragOffset.y;
-    setPosition({
-      x: newX,
-      y: newY
-    });
-  };
-
-  const handleDragEnd = () => {
-    setIsDragging(false);
-  };
+    fetchArticles();
+  }, []);
 
   return (
-    <div className="annotations-list" style={{
-      position: 'fixed',
-      top: typeof position.y === 'number' ? `${position.y}px` : position.y,
-      left: typeof position.x === 'number' ? `${position.x}px` : position.x,
-      transform: 'none',
-    }}>
-      <div 
-        className="annotations-header"
-        onMouseDown={handleDragStart}
-        onMouseMove={handleDrag}
-        onMouseUp={handleDragEnd}
-        onMouseLeave={handleDragEnd}
-      >
-        <h3>Annotations ({rectangles.length})</h3>
-        <button 
-          className="close-button" 
-          onClick={onClose}
-          type="button"
+    <div>
+      <h2>Article List</h2>
+      {articles.length ? (
+        articles.map((article) => (
+          <div key={article.id}>
+            <h3>{article.title}</h3>
+            <button
+              onClick={() => {
+                setSelectedArticle(article);
+                setShowAnnotator(true);
+              }}
+            >
+              Annotate
+            </button>
+          </div>
+        ))
+      ) : (
+        <p>No articles found.</p>
+      )}
+
+      {showAnnotator && selectedArticle && (
+        <div
+          className="annotator-modal"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            zIndex: 1000,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}
         >
-          ×
-        </button>
-      </div>
-      <div className="annotations-container">
-        {rectangles.length === 0 ? (
-          <div className="no-annotations">No annotations yet</div>
-        ) : (
-          rectangles.map((rect, index) => (
-            <div key={index} className="annotation-item">
-              <div className="annotation-header">
-                <span className="annotation-label">{rect.label}</span>
-                <span className="annotation-page">Page {rect.pageNumber}</span>
-              </div>
-              <div className="annotation-text" title={rect.extractedText}>
-                {truncateText(rect.extractedText)}
-              </div>
-              <div className="annotation-coords">
-                x: {rect.x.toFixed(0)}, y: {rect.y.toFixed(0)}, 
-                w: {rect.width.toFixed(0)}, h: {rect.height.toFixed(0)}
-              </div>
-              <div className="annotation-actions">
-                <button 
-                  onClick={() => handleJumpTo(rect)}
-                  className="jump-button"
-                >
-                  Jump to
-                </button>
-                <button 
-                  onClick={() => onDeleteAnnotation(index)}
-                  className="delete-button"
-                >
-                  Delete
-                </button>
-              </div>
+          <div
+            style={{
+              position: 'relative',
+              width: '95%',
+              height: '95vh',
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              maxWidth: '1200px'
+            }}
+          >
+            <button
+              onClick={() => {
+                setShowAnnotator(false);
+                setSelectedArticle(null);
+              }}
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '10px',
+                zIndex: 2,
+                padding: '8px',
+                backgroundColor: '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Close
+            </button>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+              <PdfViewer
+                pdfS3Key={selectedArticle.pdf_s3_key}
+                articleId={selectedArticle.id}
+              />
             </div>
-          ))
-        )}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default AnnotationsList; 
+export default ArticleList; 
